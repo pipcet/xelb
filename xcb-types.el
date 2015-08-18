@@ -480,6 +480,16 @@ and the second the consumed length."
                  'iso-latin-1)))
          (`xcb:void                     ;for further unmarshalling
           (setf (slot-value obj list-name) (substring data 0 list-size)))
+         (`xcb:KEYSYM
+          (let ((count 0)
+                result tmp)
+            (dotimes (i list-size)
+              (setq tmp (xcb:-unmarshal-field obj 'xcb:KEYSYM (substring data count (+ 4 count)) nil))
+              (push (car tmp) result)
+              (setq count (+ count (cadr tmp))))
+            (setq result (nreverse result))
+            (setf (slot-value obj list-name) result)
+            (list initform count)))
          (x
           (let ((count 0)
                 result tmp)
