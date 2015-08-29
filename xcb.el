@@ -75,6 +75,7 @@
    (auth-info :initarg :auth-info)
    (socket :initarg :socket)
    (lock :initform nil)
+   (lock-handlers :initform 0)
    (setup-data :initform nil)           ;X connection setup data
    (request-cache :initform [])         ;cache for outgoing requests
    (message-cache :initform [])         ;cache for incoming messages
@@ -296,7 +297,8 @@ Concurrency is disabled as it breaks the orders of errors, replies and events."
                                                ,synthetic]))))))
              (setq cache (substring cache 32))))))
       (setf (slot-value connection 'lock) nil))
-    (unless (slot-value connection 'lock)
+    (unless (or (slot-value connection 'lock)
+                (> (slot-value connection 'lock-handlers) 0))
       (with-slots (message-cache) connection
         (let ((current-cache-length (length message-cache)))
           (setf message-cache
@@ -513,7 +515,10 @@ Otherwise no error will ever be reported."
       (with-timeout (xcb:connection-timeout (error "[XELB] Retrieve reply timeout"))
         (while (and (> sequence (slot-value obj 'reply-sequence))
                     (> sequence (slot-value obj 'error-sequence)))
-          (accept-process-output process 1)))))
+          (set-slot-value obj 'lock-handlers (1+ (slot-value obj 'lock-handlers)))
+          (accept-process-output process 1)
+          (set-slot-value obj 'lock-handlers (1- (slot-value obj 'lock-handlers)))
+          ))))
   (let* ((reply-plist (slot-value obj 'reply-plist))
          (reply-data (plist-get reply-plist sequence))
          (error-plist (slot-value obj 'error-plist))
