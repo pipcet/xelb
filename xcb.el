@@ -316,7 +316,7 @@ Concurrency is disabled as it breaks the orders of errors, replies and events."
               (dolist (listener (elt event 0))
                 (funcall listener data synthetic))))
           (decf lock-handlers)
-          (setf event-lock nil))))
+          (setf event-lock nil))))))
 
 (cl-defmethod xcb:disconnect ((obj xcb:connection))
   "Disconnect from X server."
