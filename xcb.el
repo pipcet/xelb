@@ -297,24 +297,26 @@ Concurrency is disabled as it breaks the orders of errors, replies and events."
                                                ,synthetic]))))))
              (setq cache (substring cache 32))))))
       (setf (slot-value connection 'lock) nil))
-    (unless (or (slot-value connection 'lock)
-                (> (slot-value connection 'lock-handlers) 0))
+    (unless (slot-value connection 'lock)
       (with-slots (message-cache) connection
         (let ((current-cache-length (length message-cache)))
           (setf message-cache
                 (substring message-cache (- cache-length (length cache))))
           (when (/= current-cache-length cache-length)
             (xcb:-connection-filter process []))))
-      (with-slots (event-lock event-queue) connection
-        (unless event-lock
+      (with-slots (event-lock event-queue lock-handlers) connection
+        (unless (or event-lock
+                    (> lock-handlers 0))
           (setf event-lock t)
+          (incf lock-handlers)
           (let (event data synthetic)
             (while (setq event (pop event-queue))
               (setq data (elt event 1)
                     synthetic (elt event 2))
               (dolist (listener (elt event 0))
                 (funcall listener data synthetic))))
-          (setf event-lock nil))))))
+          (decf lock-handlers)
+          (setf event-lock nil))))
 
 (cl-defmethod xcb:disconnect ((obj xcb:connection))
   "Disconnect from X server."
